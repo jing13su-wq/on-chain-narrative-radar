@@ -1,8 +1,6 @@
 name: On-chain narrative monitor
 
 on:
-  schedule:
-    - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
