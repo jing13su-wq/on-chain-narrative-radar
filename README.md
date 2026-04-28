@@ -101,5 +101,6 @@ Manual workflow inputs:
 - `bootstrap_volume_alerts=true`: alert current volume leaders even when no previous leaderboard exists.
 - `interval`: `5m`, `15m`, or `1h`.
 - `chart_limit`: `120`, `180`, or `240` candles per chart.
+- `test_symbol`: send one chart for a specific symbol, for example `SOLUSDT`, bypassing filters and state.
 
 The action stores its state in the GitHub Actions cache, so the "newly entered volume leaderboard" logic can compare against the previous scheduled run.

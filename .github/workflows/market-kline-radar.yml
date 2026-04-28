@@ -47,6 +47,11 @@ on:
           - "120"
           - "180"
           - "240"
+      test_symbol:
+        description: "Optional: send one chart for this symbol, bypassing filters"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -101,18 +106,22 @@ jobs:
           BOOTSTRAP_VOLUME_ALERTS: ${{ github.event.inputs.bootstrap_volume_alerts || 'false' }}
           INTERVAL: ${{ github.event.inputs.interval || '15m' }}
           CHART_LIMIT: ${{ github.event.inputs.chart_limit || '180' }}
+          TEST_SYMBOL: ${{ github.event.inputs.test_symbol || '' }}
         run: |
-          EXTRA_ARGS=""
+          EXTRA_ARGS=()
           if [ "${DRY_RUN}" = "true" ]; then
-            EXTRA_ARGS="${EXTRA_ARGS} --dry-run"
+            EXTRA_ARGS+=(--dry-run)
           fi
           if [ "${RESET_STATE}" = "true" ]; then
-            EXTRA_ARGS="${EXTRA_ARGS} --reset-state"
+            EXTRA_ARGS+=(--reset-state)
           fi
           if [ "${BOOTSTRAP_VOLUME_ALERTS}" = "true" ]; then
-            EXTRA_ARGS="${EXTRA_ARGS} --bootstrap-volume-alerts"
+            EXTRA_ARGS+=(--bootstrap-volume-alerts)
           fi
-          python market_kline_radar/scanner.py --once ${EXTRA_ARGS} \
+          if [ -n "${TEST_SYMBOL}" ]; then
+            EXTRA_ARGS+=(--test-symbol "${TEST_SYMBOL}")
+          fi
+          python market_kline_radar/scanner.py --once "${EXTRA_ARGS[@]}" \
             --interval "${INTERVAL}" \
             --chart-limit "${CHART_LIMIT}" \
             --candle-width-scale 0.48 \

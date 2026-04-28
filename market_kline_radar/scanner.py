@@ -353,29 +353,37 @@ def send_telegram_photo(token: str, chat_id: str, image_path: Path, caption: str
 def run_once(args: argparse.Namespace) -> int:
     state_path = Path(args.state_file)
     chart_dir = Path(args.chart_dir)
-    state = load_state(state_path)
-    if args.reset_state:
-        state = {"version": STATE_VERSION, "volume_top": [], "seen": {}}
-    prune_seen(state, args.seen_ttl_hours)
 
-    excluded_bases = {item.strip().upper() for item in args.exclude_bases.split(",") if item.strip()}
-    rows = tickers(excluded_bases)
-    candidates, current_volume_top = select_candidates(
-        rows,
-        state,
-        volume_top_n=args.volume_top_n,
-        gainer_top_n=args.gainer_top_n,
-        min_volume_quote=args.min_volume_quote,
-        min_gainer_volume_quote=args.min_gainer_volume_quote,
-        min_gain_pct=args.min_gain_pct,
-        bootstrap_volume_alerts=args.bootstrap_volume_alerts,
-    )
-    fresh = fresh_candidates(candidates, state, args.max_alerts)
+    if args.test_symbol:
+        fresh = [Candidate(args.test_symbol.upper(), "test", 1)]
+        print(f"[{utc_stamp()}] test_symbol={fresh[0].symbol} interval={args.interval}")
+    else:
+        state = load_state(state_path)
+        if args.reset_state:
+            state = {"version": STATE_VERSION, "volume_top": [], "seen": {}}
+        prune_seen(state, args.seen_ttl_hours)
 
-    print(
-        f"[{utc_stamp()}] tickers={len(rows)} candidates={len(candidates)} "
-        f"fresh={len(fresh)} interval={args.interval}"
-    )
+        excluded_bases = {item.strip().upper() for item in args.exclude_bases.split(",") if item.strip()}
+        rows = tickers(excluded_bases)
+        candidates, current_volume_top = select_candidates(
+            rows,
+            state,
+            volume_top_n=args.volume_top_n,
+            gainer_top_n=args.gainer_top_n,
+            min_volume_quote=args.min_volume_quote,
+            min_gainer_volume_quote=args.min_gainer_volume_quote,
+            min_gain_pct=args.min_gain_pct,
+            bootstrap_volume_alerts=args.bootstrap_volume_alerts,
+        )
+        fresh = fresh_candidates(candidates, state, args.max_alerts)
+
+        print(
+            f"[{utc_stamp()}] tickers={len(rows)} candidates={len(candidates)} "
+            f"fresh={len(fresh)} interval={args.interval}"
+        )
+
+        state["volume_top"] = current_volume_top
+        state["volume_top_updated_at"] = int(time.time())
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
@@ -398,9 +406,9 @@ def run_once(args: argparse.Namespace) -> int:
         except Exception as exc:  # noqa: BLE001 - keep the scan moving.
             print(f"[warn] {item.symbol} skipped: {exc}", file=sys.stderr)
 
-    state["volume_top"] = current_volume_top
-    state["volume_top_updated_at"] = int(time.time())
-    if args.dry_run:
+    if args.test_symbol:
+        print("[test] state not updated")
+    elif args.dry_run:
         print("[dry-run] state not updated")
     else:
         mark_seen(sent_or_rendered, state)
@@ -417,6 +425,7 @@ def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser.add_argument("--interval", default="15m", help="Kline interval, for example 5m, 15m, 1h.")
     parser.add_argument("--chart-limit", type=int, default=180, help="Number of candles per chart.")
     parser.add_argument("--candle-width-scale", type=float, default=0.48, help="Candle body width scale from 0.2 to 0.9.")
+    parser.add_argument("--test-symbol", default="", help="Send one chart for this symbol, bypassing all filters and state.")
     parser.add_argument("--volume-top-n", type=int, default=40, help="24h quote-volume leaderboard size.")
     parser.add_argument("--gainer-top-n", type=int, default=25, help="24h gainer leaderboard size to inspect.")
     parser.add_argument("--min-volume-quote", type=float, default=50_000_000, help="Minimum 24h quote volume for volume-new signals.")
