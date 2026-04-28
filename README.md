@@ -75,3 +75,10 @@ Settings -> Secrets and variables -> Actions -> New repository secret
 ```
 
 After both secrets are present, open `Actions -> On-chain narrative monitor -> Run workflow` to test one scan.
+
+Manual workflow inputs:
+
+- `dry_run=true`: preview messages without sending Telegram alerts.
+- `reset_state=true`: ignore the cached dedupe state for this run.
+
+For a real end-to-end Telegram test, run with `dry_run=false` and `reset_state=true`.

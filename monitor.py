@@ -385,8 +385,11 @@ def run_once(args: argparse.Namespace) -> int:
             send_telegram(token, chat_id, message)
             print(f"[sent] {alert.chain_id}:{alert.symbol} score={alert.score}")
 
-    mark_seen(fresh, state)
-    save_state(state_path, state)
+    if args.dry_run:
+        print("[dry-run] state not updated")
+    else:
+        mark_seen(fresh, state)
+        save_state(state_path, state)
     return 0
 
 
