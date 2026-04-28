@@ -82,3 +82,24 @@ Manual workflow inputs:
 - `reset_state=true`: ignore the cached dedupe state for this run.
 
 For a real end-to-end Telegram test, run with `dry_run=false` and `reset_state=true`.
+
+## GitHub Actions Market Kline Radar
+
+The repository also includes `.github/workflows/market-kline-radar.yml`, which runs the market K-line radar every 5 minutes.
+
+It scans Binance USDT perpetuals, renders plain candlestick charts, and sends chart images to Telegram.
+
+Use the same repository secrets:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+Manual workflow inputs:
+
+- `dry_run=true`: render charts without sending Telegram messages.
+- `reset_state=true`: ignore cached rank and dedupe state.
+- `bootstrap_volume_alerts=true`: alert current volume leaders even when no previous leaderboard exists.
+- `interval`: `5m`, `15m`, or `1h`.
+- `chart_limit`: `120`, `180`, or `240` candles per chart.
+
+The action stores its state in the GitHub Actions cache, so the "newly entered volume leaderboard" logic can compare against the previous scheduled run.

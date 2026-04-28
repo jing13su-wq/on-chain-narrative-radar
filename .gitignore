@@ -4,3 +4,5 @@ on-chain-narrative-radar.zip
 .monitor_state*.json
 monitor.log
 __pycache__/
+market_kline_radar/charts/
+market_kline_radar/state.json
