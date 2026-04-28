@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="On-chain narrative radar for ETH, SOL, BSC, and Base token discovery.">
+    <title>On-Chain Narrative Radar</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" aria-label="Radar status">
+        <a class="brand" href="./" aria-label="On-Chain Narrative Radar home">
+          <span class="brand-mark">NR</span>
+          <span>
+            <strong>On-Chain</strong>
+            <em>Narrative Radar</em>
+          </span>
+        </a>
+        <div class="health">
+          <span class="pulse" aria-hidden="true"></span>
+          <span id="healthText">warming up</span>
+        </div>
+        <nav class="chain-list" aria-label="Chain filters">
+          <label><input type="checkbox" value="ethereum" checked> Ethereum</label>
+          <label><input type="checkbox" value="solana" checked> Solana</label>
+          <label><input type="checkbox" value="bsc" checked> BSC</label>
+          <label><input type="checkbox" value="base" checked> Base</label>
+        </nav>
+        <div class="source-stack" aria-label="Data sources">
+          <span>DEX Screener profiles</span>
+          <span>boost streams</span>
+          <span>community takeovers</span>
+          <span>pair liquidity</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">LIVE TOKEN DISCOVERY</p>
+            <h1>On-Chain Narrative Radar</h1>
+          </div>
+          <div class="actions">
+            <label class="search">
+              <span>Search</span>
+              <input id="searchInput" type="search" placeholder="symbol, chain, narrative">
+            </label>
+            <button id="refreshBtn" type="button">Refresh</button>
+          </div>
+        </header>
+
+        <section class="metrics" aria-label="Radar metrics">
+          <article>
+            <span>Hot Tokens</span>
+            <strong id="metricTokens">--</strong>
+          </article>
+          <article>
+            <span>Top Narrative</span>
+            <strong id="metricNarrative">--</strong>
+          </article>
+          <article>
+            <span>Median Liquidity</span>
+            <strong id="metricLiquidity">--</strong>
+          </article>
+          <article>
+            <span>Last Scan</span>
+            <strong id="metricUpdated">--</strong>
+          </article>
+        </section>
+
+        <section class="control-band" aria-label="Radar controls">
+          <div class="tabs" role="tablist" aria-label="Sort mode">
+            <button class="active" type="button" data-sort="score">Signal</button>
+            <button type="button" data-sort="volume">Volume</button>
+            <button type="button" data-sort="liquidity">Liquidity</button>
+            <button type="button" data-sort="age">New</button>
+          </div>
+          <label class="range-control">
+            <span>Min Score <output id="minScoreValue">45</output></span>
+            <input id="minScore" type="range" min="0" max="100" step="5" value="45">
+          </label>
+        </section>
+
+        <section class="radar-grid">
+          <div class="token-column">
+            <div class="section-heading">
+              <h2>Signal Feed</h2>
+              <span id="resultCount">0 found</span>
+            </div>
+            <div id="tokenList" class="token-list" aria-live="polite"></div>
+          </div>
+          <div class="side-column">
+            <section class="panel">
+              <div class="section-heading">
+                <h2>Narratives</h2>
+                <span>weighted</span>
+              </div>
+              <div id="narrativeList" class="narrative-list"></div>
+            </section>
+            <section class="panel">
+              <div class="section-heading">
+                <h2>Risk Tape</h2>
+                <span>quick scan</span>
+              </div>
+              <div id="riskTape" class="risk-tape"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="tokenTemplate">
+      <article class="token-card">
+        <div class="token-head">
+          <img class="token-icon" alt="">
+          <div class="token-title">
+            <a class="token-name" target="_blank" rel="noreferrer"></a>
+            <span class="token-meta"></span>
+          </div>
+          <strong class="score-pill"></strong>
+        </div>
+        <div class="token-stats">
+          <span><b>Vol 24h</b><em data-field="volume"></em></span>
+          <span><b>Liq</b><em data-field="liquidity"></em></span>
+          <span><b>24h</b><em data-field="change"></em></span>
+          <span><b>Age</b><em data-field="age"></em></span>
+        </div>
+        <div class="tag-row"></div>
+        <p class="token-description"></p>
+      </article>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
