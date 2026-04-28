@@ -344,8 +344,12 @@ def send_telegram(token: str, chat_id: str, text: str, timeout: int = 20) -> Non
         headers={"User-Agent": "on-chain-narrative-monitor/1.0"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=timeout) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Telegram HTTP {exc.code}: {body}") from exc
     if not payload.get("ok"):
         raise RuntimeError(f"Telegram returned not ok: {payload}")
 

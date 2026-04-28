@@ -4,9 +4,21 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Scan without sending Telegram messages"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   scan:
@@ -39,5 +51,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: |
-          python monitor.py --once --min-score 55 --min-liquidity 25000 --min-volume 50000 --max-alerts 5 --state-file .cache/monitor_state.json
+          EXTRA_ARGS=""
+          if [ "${DRY_RUN}" = "true" ]; then
+            EXTRA_ARGS="--dry-run"
+          fi
+          python monitor.py --once ${EXTRA_ARGS} --min-score 55 --min-liquidity 25000 --min-volume 50000 --max-alerts 5 --state-file .cache/monitor_state.json
