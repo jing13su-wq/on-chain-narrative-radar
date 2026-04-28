@@ -233,7 +233,7 @@ function renderTokens(tokens) {
     img.alt = `${token.symbol} icon`;
     $(".token-name", node).textContent = `${token.symbol} / ${token.name}`;
     $(".token-name", node).href = token.url;
-    $(".token-meta", node).textContent = `${token.chainId.toUpperCase()} · ${token.source} · ${shortAddress(token.address)}`;
+    $(".token-meta", node).textContent = `${token.chainId.toUpperCase()} / ${token.source} / ${shortAddress(token.address)}`;
     $(".score-pill", node).textContent = token.score;
     $('[data-field="volume"]', node).textContent = money(token.volume);
     $('[data-field="liquidity"]', node).textContent = money(token.liquidity);
@@ -291,7 +291,7 @@ function renderRiskTape(tokens) {
   riskItems.forEach(({ token, notes }) => {
     const row = document.createElement("div");
     row.className = "risk-item";
-    row.innerHTML = `<strong>${escapeHtml(token.symbol)} · ${token.score}</strong>${escapeHtml(notes.join(", "))}`;
+    row.innerHTML = `<strong>${escapeHtml(token.symbol)} / ${token.score}</strong>${escapeHtml(notes.join(", "))}`;
     root.append(row);
   });
   if (!riskItems.length) root.textContent = "Waiting for high-conviction signals.";

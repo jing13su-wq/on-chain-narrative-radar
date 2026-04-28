@@ -32,3 +32,46 @@ connectfarm1.com/on-chain-narrative-radar/
 ```
 
 For Cloudflare Pages, Netlify, Vercel static output, or a plain Nginx/Apache site, use this directory as the publish directory. There is no build step.
+
+## Telegram Monitor
+
+The monitor is a zero-dependency Python script that scans DEX Screener, scores tokens, deduplicates alerts, and posts fresh signals to Telegram.
+
+Dry run:
+
+```powershell
+python .\monitor.py --once --dry-run --min-score 55
+```
+
+Required environment variables for real Telegram sends:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN="123456789:your_bot_token"
+$env:TELEGRAM_CHAT_ID="your_chat_id"
+python .\monitor.py --once
+```
+
+Continuous local loop:
+
+```powershell
+python .\monitor.py --loop --interval-minutes 10 --min-score 55
+```
+
+The script stores dedupe state in `.monitor_state.json` and suppresses repeat alerts for 24 hours by default.
+
+## GitHub Actions Monitor
+
+The repository includes `.github/workflows/monitor.yml`, which runs the monitor every 10 minutes.
+
+Add these repository secrets before enabling real sends:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+GitHub path:
+
+```text
+Settings -> Secrets and variables -> Actions -> New repository secret
+```
+
+After both secrets are present, open `Actions -> On-chain narrative monitor -> Run workflow` to test one scan.

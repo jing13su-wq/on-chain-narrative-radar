@@ -1,1 +1,6 @@
 on-chain-narrative-radar.zip
+.env
+.cache/
+.monitor_state*.json
+monitor.log
+__pycache__/

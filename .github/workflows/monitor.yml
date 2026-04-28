@@ -1,0 +1,43 @@
+name: On-chain narrative monitor
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore monitor state
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: |
+            monitor-state-
+
+      - name: Prepare state directory
+        run: mkdir -p .cache
+
+      - name: Validate Telegram secrets
+        run: |
+          test -n "${TELEGRAM_BOT_TOKEN}" || (echo "Missing TELEGRAM_BOT_TOKEN secret" && exit 1)
+          test -n "${TELEGRAM_CHAT_ID}" || (echo "Missing TELEGRAM_CHAT_ID secret" && exit 1)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Run monitor
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python monitor.py --once --min-score 55 --min-liquidity 25000 --min-volume 50000 --max-alerts 5 --state-file .cache/monitor_state.json
