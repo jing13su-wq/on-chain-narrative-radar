@@ -34,6 +34,7 @@ from matplotlib.patches import Rectangle
 
 
 BINANCE_FAPI = "https://fapi.binance.com"
+BYBIT_API = "https://api.bybit.com"
 STATE_VERSION = 1
 STABLE_BASES = {
     "USDC",
@@ -78,9 +79,9 @@ def utc_stamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def request_json(path: str, params: dict[str, Any] | None = None, timeout: int = 20) -> Any:
+def request_json(base_url: str, path: str, params: dict[str, Any] | None = None, timeout: int = 20) -> Any:
     response = requests.get(
-        f"{BINANCE_FAPI}{path}",
+        f"{base_url}{path}",
         params=params,
         headers={
             "Accept": "application/json",
@@ -122,8 +123,8 @@ def base_asset(symbol: str, quote: str = "USDT") -> str:
     return symbol[: -len(quote)] if symbol.endswith(quote) else symbol
 
 
-def tradable_usdt_perps(excluded_bases: set[str]) -> dict[str, str]:
-    data = request_json("/fapi/v1/exchangeInfo")
+def binance_tradable_usdt_perps(excluded_bases: set[str]) -> dict[str, str]:
+    data = request_json(BINANCE_FAPI, "/fapi/v1/exchangeInfo")
     symbols: dict[str, str] = {}
     for item in data.get("symbols", []):
         if item.get("contractType") != "PERPETUAL":
@@ -137,9 +138,9 @@ def tradable_usdt_perps(excluded_bases: set[str]) -> dict[str, str]:
     return symbols
 
 
-def tickers(excluded_bases: set[str]) -> list[Ticker]:
-    allowed = tradable_usdt_perps(excluded_bases)
-    rows = request_json("/fapi/v1/ticker/24hr")
+def binance_tickers(excluded_bases: set[str]) -> list[Ticker]:
+    allowed = binance_tradable_usdt_perps(excluded_bases)
+    rows = request_json(BINANCE_FAPI, "/fapi/v1/ticker/24hr")
     result = []
     for row in rows:
         symbol = row.get("symbol")
@@ -158,6 +159,47 @@ def tickers(excluded_bases: set[str]) -> list[Ticker]:
         except (TypeError, ValueError):
             continue
     return result
+
+
+def bybit_request_json(path: str, params: dict[str, Any] | None = None, timeout: int = 20) -> Any:
+    data = request_json(BYBIT_API, path, params=params, timeout=timeout)
+    if int(data.get("retCode", -1)) != 0:
+        raise RuntimeError(f"Bybit API error {data.get('retCode')}: {data.get('retMsg')}")
+    return data.get("result") or {}
+
+
+def bybit_tickers(excluded_bases: set[str]) -> list[Ticker]:
+    result = bybit_request_json("/v5/market/tickers", {"category": "linear"})
+    rows = result.get("list") or []
+    tickers_out = []
+    for row in rows:
+        symbol = str(row.get("symbol") or "")
+        if not symbol.endswith("USDT"):
+            continue
+        base = base_asset(symbol)
+        if base in excluded_bases:
+            continue
+        try:
+            tickers_out.append(
+                Ticker(
+                    symbol=symbol,
+                    base_asset=base,
+                    quote_volume=float(row.get("turnover24h") or 0),
+                    price_change_pct=float(row.get("price24hPcnt") or 0) * 100.0,
+                    last_price=float(row.get("lastPrice") or 0),
+                )
+            )
+        except (TypeError, ValueError):
+            continue
+    return tickers_out
+
+
+def tickers(exchange: str, excluded_bases: set[str]) -> list[Ticker]:
+    if exchange == "binance-futures":
+        return binance_tickers(excluded_bases)
+    if exchange == "bybit-linear":
+        return bybit_tickers(excluded_bases)
+    raise ValueError(f"unsupported exchange: {exchange}")
 
 
 def select_candidates(
@@ -217,8 +259,9 @@ def mark_seen(candidates: list[Candidate], state: dict[str, Any]) -> None:
         }
 
 
-def fetch_klines(symbol: str, interval: str, limit: int) -> list[Candle]:
+def binance_fetch_klines(symbol: str, interval: str, limit: int) -> list[Candle]:
     rows = request_json(
+        BINANCE_FAPI,
         "/fapi/v1/klines",
         {
             "symbol": symbol,
@@ -238,6 +281,51 @@ def fetch_klines(symbol: str, interval: str, limit: int) -> list[Candle]:
             )
         )
     return candles
+
+
+def bybit_interval(interval: str) -> str:
+    unit = interval[-1]
+    value = int(interval[:-1])
+    if unit == "m":
+        return str(value)
+    if unit == "h":
+        return str(value * 60)
+    if unit == "d":
+        return "D" if value == 1 else str(value * 24 * 60)
+    raise ValueError(f"unsupported interval: {interval}")
+
+
+def bybit_fetch_klines(symbol: str, interval: str, limit: int) -> list[Candle]:
+    result = bybit_request_json(
+        "/v5/market/kline",
+        {
+            "category": "linear",
+            "symbol": symbol,
+            "interval": bybit_interval(interval),
+            "limit": limit,
+        },
+    )
+    rows = list(reversed(result.get("list") or []))
+    candles = []
+    for row in rows:
+        candles.append(
+            Candle(
+                open_time=int(row[0]),
+                open=float(row[1]),
+                high=float(row[2]),
+                low=float(row[3]),
+                close=float(row[4]),
+            )
+        )
+    return candles
+
+
+def fetch_klines(exchange: str, symbol: str, interval: str, limit: int) -> list[Candle]:
+    if exchange == "binance-futures":
+        return binance_fetch_klines(symbol, interval, limit)
+    if exchange == "bybit-linear":
+        return bybit_fetch_klines(symbol, interval, limit)
+    raise ValueError(f"unsupported exchange: {exchange}")
 
 
 def interval_to_minutes(interval: str) -> int:
@@ -364,7 +452,7 @@ def run_once(args: argparse.Namespace) -> int:
         prune_seen(state, args.seen_ttl_hours)
 
         excluded_bases = {item.strip().upper() for item in args.exclude_bases.split(",") if item.strip()}
-        rows = tickers(excluded_bases)
+        rows = tickers(args.exchange, excluded_bases)
         candidates, current_volume_top = select_candidates(
             rows,
             state,
@@ -393,7 +481,7 @@ def run_once(args: argparse.Namespace) -> int:
     sent_or_rendered: list[Candidate] = []
     for item in fresh:
         try:
-            candles = fetch_klines(item.symbol, args.interval, args.chart_limit)
+            candles = fetch_klines(args.exchange, item.symbol, args.interval, args.chart_limit)
             image_path = render_candles(item.symbol, candles, args.interval, chart_dir, args.candle_width_scale)
             caption = f"{item.symbol} {args.interval} Kline"
             if args.dry_run:
@@ -417,12 +505,13 @@ def run_once(args: argparse.Namespace) -> int:
 
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Scan Binance USDT perpetuals and push pure K-line charts.")
+    parser = argparse.ArgumentParser(description="Scan USDT perpetuals and push pure K-line charts.")
     parser.add_argument("--once", action="store_true", help="Run one scan and exit.")
     parser.add_argument("--loop", action="store_true", help="Keep scanning forever.")
     parser.add_argument("--dry-run", action="store_true", help="Render charts and print candidates without Telegram sends.")
     parser.add_argument("--interval-minutes", type=float, default=5.0, help="Loop interval in minutes.")
     parser.add_argument("--interval", default="15m", help="Kline interval, for example 5m, 15m, 1h.")
+    parser.add_argument("--exchange", choices=["bybit-linear", "binance-futures"], default="bybit-linear")
     parser.add_argument("--chart-limit", type=int, default=180, help="Number of candles per chart.")
     parser.add_argument("--candle-width-scale", type=float, default=0.48, help="Candle body width scale from 0.2 to 0.9.")
     parser.add_argument("--test-symbol", default="", help="Send one chart for this symbol, bypassing all filters and state.")

@@ -87,7 +87,7 @@ For a real end-to-end Telegram test, run with `dry_run=false` and `reset_state=t
 
 The repository also includes `.github/workflows/market-kline-radar.yml`, which runs the market K-line radar every 5 minutes.
 
-It scans Binance USDT perpetuals, renders plain candlestick charts, and sends chart images to Telegram.
+It scans Bybit USDT perpetuals by default, renders plain candlestick charts, and sends chart images to Telegram.
 
 Use the same repository secrets:
 
@@ -99,6 +99,7 @@ Manual workflow inputs:
 - `dry_run=true`: render charts without sending Telegram messages.
 - `reset_state=true`: ignore cached rank and dedupe state.
 - `bootstrap_volume_alerts=true`: alert current volume leaders even when no previous leaderboard exists.
+- `exchange`: `bybit-linear` by default; `binance-futures` is available but may return HTTP 451 on GitHub-hosted runners.
 - `interval`: `5m`, `15m`, or `1h`.
 - `chart_limit`: `120`, `180`, or `240` candles per chart.
 - `test_symbol`: send one chart for a specific symbol, for example `SOLUSDT`, bypassing filters and state.

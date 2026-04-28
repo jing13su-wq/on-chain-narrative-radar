@@ -58,7 +58,7 @@ python .\market_kline_radar\scanner.py --loop --interval-minutes 5
 
 ## 设计取舍
 
-- 默认交易所为 Binance USDT 永续，适合短线流动性筛选。
+- 默认交易所为 Bybit USDT 永续，适合在 GitHub Actions 上运行；也保留 `--exchange binance-futures`，但 GitHub runner 可能被 Binance 返回 451。
 - 默认排除 BTC、ETH 与稳定币基底，减少噪音。
 - 成交额榜“之前不在榜”以本地 state 文件的上一轮榜单为基准，文件默认是 `market_kline_radar/state.json`。
 - 图上只画 K 线，不叠加成交量柱或技术指标。

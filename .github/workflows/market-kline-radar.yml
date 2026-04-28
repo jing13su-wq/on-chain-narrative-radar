@@ -38,6 +38,14 @@ on:
           - "5m"
           - "15m"
           - "1h"
+      exchange:
+        description: "Market data source"
+        required: true
+        default: "bybit-linear"
+        type: choice
+        options:
+          - "bybit-linear"
+          - "binance-futures"
       chart_limit:
         description: "Candles per chart"
         required: true
@@ -105,6 +113,7 @@ jobs:
           RESET_STATE: ${{ github.event.inputs.reset_state || 'false' }}
           BOOTSTRAP_VOLUME_ALERTS: ${{ github.event.inputs.bootstrap_volume_alerts || 'false' }}
           INTERVAL: ${{ github.event.inputs.interval || '15m' }}
+          EXCHANGE: ${{ github.event.inputs.exchange || 'bybit-linear' }}
           CHART_LIMIT: ${{ github.event.inputs.chart_limit || '180' }}
           TEST_SYMBOL: ${{ github.event.inputs.test_symbol || '' }}
         run: |
@@ -123,6 +132,7 @@ jobs:
           fi
           python market_kline_radar/scanner.py --once "${EXTRA_ARGS[@]}" \
             --interval "${INTERVAL}" \
+            --exchange "${EXCHANGE}" \
             --chart-limit "${CHART_LIMIT}" \
             --candle-width-scale 0.48 \
             --volume-top-n 40 \
